@@ -44,9 +44,8 @@ public class TrajectoryRenderer {
             pull = (pull * pull + pull * 2.0F) / 3.0F;
             if (pull > 1.0F) pull = 1.0F;
             
-            // If not using item (holding charged), assume full power
             if (player.getItemUseTimeLeft() == 0) pull = 1.0F;
-            else if (pull < 0.1F) return; // Not pulled enough
+            else if (pull < 0.1F) return;
 
             speed = pull * 3.0F;
         } else if (item instanceof CrossbowItem) {
@@ -64,16 +63,15 @@ public class TrajectoryRenderer {
         float pitch = player.getPitch(tickDelta);
         float yaw = player.getYaw(tickDelta);
 
-        // Vector Math
+        // Vector Math (using f, g, h for directional vectors)
         float f = -MathHelper.sin(yaw * 0.017453292F) * MathHelper.cos(pitch * 0.017453292F);
-        float g = -MathHelper.sin(pitch * 0.017453292F);
+        float g = -MathHelper.sin(pitch * 0.017453292F); // This 'g' caused the conflict!
         float h = MathHelper.cos(yaw * 0.017453292F) * MathHelper.cos(pitch * 0.017453292F);
         Vec3d motion = new Vec3d(f, g, h).normalize().multiply(speed);
 
         Vec3d pos = startPos;
         Vec3d camPos = camera.getPos();
         
-        // Use the MatrixStack passed from WorldRenderer to transform vertices
         Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
 
         // Simulation Loop
@@ -93,7 +91,6 @@ public class TrajectoryRenderer {
                 player
             );
             
-            // Note: getEntityWorld() is the new method name in 1.21.10
             HitResult hit = player.getEntityWorld().raycast(context);
             boolean didHit = hit.getType() != HitResult.Type.MISS;
 
@@ -102,7 +99,6 @@ public class TrajectoryRenderer {
             }
 
             // Render Line Segment
-            // Shift coordinates relative to camera for rendering
             float x1 = (float) (prevPos.x - camPos.x);
             float y1 = (float) (prevPos.y - camPos.y);
             float z1 = (float) (prevPos.z - camPos.z);
@@ -111,16 +107,18 @@ public class TrajectoryRenderer {
             float z2 = (float) (pos.z - camPos.z);
 
             // Color: Green normally, Red on impact
-            float r = didHit ? 1.0f : 0.0f;
-            float g = didHit ? 0.0f : 1.0f;
+            // Renamed to red/green/blue to avoid conflict with vector 'g'
+            float red = didHit ? 1.0f : 0.0f;
+            float green = didHit ? 0.0f : 1.0f;
+            float blue = 0.0f;
 
             buffer.vertex(positionMatrix, x1, y1, z1)
-                  .color(r, g, 0.0f, 1.0f)
+                  .color(red, green, blue, 1.0f)
                   .normal(1, 0, 0)
                   .next();
 
             buffer.vertex(positionMatrix, x2, y2, z2)
-                  .color(r, g, 0.0f, 1.0f)
+                  .color(red, green, blue, 1.0f)
                   .normal(1, 0, 0)
                   .next();
 
